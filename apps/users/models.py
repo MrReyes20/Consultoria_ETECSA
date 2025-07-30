@@ -4,6 +4,7 @@ from django.db import models
 
 
 class CustomUser(AbstractUser):
+    app_label='users'
     USER_TYPE_CHOICES = (
         ('admin', 'Administrador'),
         ('consultant', 'Consultor'),
