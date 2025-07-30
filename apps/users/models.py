@@ -1,19 +1,35 @@
+# apps/users/models.py
+# Este es un ejemplo. Asegúrate de que coincida con tu implementación actual.
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-
 class CustomUser(AbstractUser):
-    app_label='users'
     USER_TYPE_CHOICES = (
         ('admin', 'Administrador'),
         ('consultant', 'Consultor'),
         ('client', 'Cliente'),
     )
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='client')
+    phone = models.CharField(max_length=20, blank=True, null=True)
 
-    user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='client')
-    phone = models.CharField(max_length=20, blank=True)
-    profile_picture = models.ImageField(upload_to='profile_pics/', blank=True)
+    # Añade related_name para evitar conflictos si ya tienes grupos o permisos en otro lugar
+    groups = models.ManyToManyField(
+        'auth.Group',
+        verbose_name='groups',
+        blank=True,
+        help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
+        related_name="custom_user_set",
+        related_query_name="user",
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        verbose_name='user permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_name="custom_user_set",
+        related_query_name="user",
+    )
 
     def __str__(self):
-        return self.email
+        return self.username

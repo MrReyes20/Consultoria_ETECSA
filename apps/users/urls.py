@@ -1,8 +1,10 @@
-from django.urls import path
-from .views import UserCreateView, CustomTokenObtainPairView, UserProfileView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import CustomUserViewSet
+
+router = DefaultRouter()
+router.register(r'users', CustomUserViewSet) # Ruta para /api/users/
 
 urlpatterns = [
-    path('register/', UserCreateView.as_view(), name='register'),
-    path('login/', CustomTokenObtainPairView.as_view(), name='login'),
-    path('profile/', UserProfileView.as_view(), name='profile'),
+    path('', include(router.urls)),
 ]
