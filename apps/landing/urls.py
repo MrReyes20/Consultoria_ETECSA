@@ -24,8 +24,7 @@ router.register(r'success-cases', SuccessCaseViewSet)
 router.register(r'assessments', SelfAssessmentViewSet)
 router.register(r'posts', PostViewSet)
 
-# Router anidado para preguntas de autoevaluación (ej: /assessments/{id}/questions/)
-# y comentarios de posts (ej: /posts/{id}/comments/)
+
 assessments_router = routers.NestedSimpleRouter(router, r'assessments', lookup='assessment')
 assessments_router.register(r'questions', AssessmentQuestionViewSet, basename='assessment-questions')
 

@@ -1,6 +1,3 @@
-# apps/users/models.py
-# Este es un ejemplo. Asegúrate de que coincida con tu implementación actual.
-
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -13,7 +10,6 @@ class CustomUser(AbstractUser):
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='client')
     phone = models.CharField(max_length=20, blank=True, null=True)
 
-    # Añade related_name para evitar conflictos si ya tienes grupos o permisos en otro lugar
     groups = models.ManyToManyField(
         'auth.Group',
         verbose_name='groups',
