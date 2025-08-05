@@ -43,7 +43,9 @@ INSTALLED_APPS = [
     'corsheaders',
     'apps.users',
     'apps.landing',
+    'apps.ticket',
     'drf_spectacular',
+
 
 ]
 

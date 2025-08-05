@@ -36,11 +36,14 @@ urlpatterns = [
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
-    # Rutas de la aplicación de usuarios (gestión de usuarios por admin)
+    # Rutas de la app de usuarios (gestión de usuarios por admin)
     path('api/', include('apps.users.urls')), # Incluye las rutas de la app users
 
-    # Rutas de la aplicación landing (contenido público y administración)
+    # Rutas de la app landing (contenido público y administración)
     path('api/landing/', include('apps.landing.urls')), # Incluye las rutas de la app landing
+
+    # Rutas de la aplicación tickets (sistema de comunicación)
+    path('api/ticket/', include('ticket.urls')),
 
     # Documentación de la API (Swagger/OpenAPI)
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
