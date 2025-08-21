@@ -144,18 +144,14 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',  # Cambiado a PostgreSQL
-        'NAME': os.environ.get('DB_NAME', 'consultoria'),  # Nombre de la BD
-        'USER': os.environ.get('DB_USER', 'postgres'),   # Usuario de la BD
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),  # Contraseña
-        'HOST': os.environ.get('DB_HOST', 'localhost'),  # Servidor de BD
-        'PORT': os.environ.get('DB_PORT', '5432'),       # Puerto
-        'OPTIONS': {
-            'sslmode': os.environ.get('DB_SSLMODE', 'require'),  # Requerir SSL
-        },
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'consultoria',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
-
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
