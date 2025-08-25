@@ -12,15 +12,17 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         postgresql-client \
+        libpq-dev \
         gcc \
         python3-dev \
         musl-dev \
+        netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt /app/
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . /app/
@@ -28,8 +30,5 @@ COPY . /app/
 # Create media and static directories
 RUN mkdir -p /app/media /app/static
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
-
-# Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "core.wsgi:application"]
+# Command to run
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
