@@ -1,7 +1,9 @@
 # apps/landing/serializers.py
 
 from rest_framework import serializers
-from .models import Section, Service, SuccessCase, ContactMessage, SelfAssessment, AssessmentQuestion, Post, Comment
+from .models import (Section, Service, SuccessCase, ContactMessage, 
+                    SelfAssessment, AssessmentQuestion, UserResponse, 
+                    AssessmentResult, Post, Comment)
 
 class SectionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,6 +49,31 @@ class SelfAssessmentSerializer(serializers.ModelSerializer):
         for question_data in questions_data:
             AssessmentQuestion.objects.create(assessment=self_assessment, **question_data)
         return self_assessment
+
+class UserResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserResponse
+        fields = '__all__'
+        read_only_fields = ['user']  # El usuario se asigna automáticamente
+
+    def create(self, validated_data):
+        # Asignar el usuario actual si no es anónimo
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['user'] = request.user
+        return super().create(validated_data)
+
+class AssessmentResultSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssessmentResult
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at']
+
+    def create(self, validated_data):
+        # Asignar el usuario actual
+        request = self.context.get('request')
+        validated_data['user'] = request.user
+        return super().create(validated_data)
 
     def update(self, instance, validated_data):
         questions_data = validated_data.pop('questions', [])

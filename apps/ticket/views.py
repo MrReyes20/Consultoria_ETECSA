@@ -1,45 +1,89 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, viewsets, permissions, status, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth import get_user_model
+from rest_framework.throttling import UserRateThrottle
+from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 
-from apps.ticket.models import Ticket, Message
-from apps.ticket.serializers import TicketSerializer, MessageSerializer
+from apps.ticket.models import Ticket, Message, TicketCategory, TicketAttachment
+from apps.ticket.serializers import (
+    TicketSerializer, MessageSerializer, TicketCategorySerializer,
+    TicketAttachmentSerializer
+)
+from apps.users.permissions import IsConsultantOrAdmin, IsOwnerOrConsultant, IsAdminOnly
 
 CustomUser = get_user_model()
 
+class TicketRateThrottle(UserRateThrottle):
+    rate = '10/minute'  # Limitar a 10 peticiones por minuto
 
-class TicketListView(APIView):
+
+class TicketCategoryViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestionar las categorías de tickets."""
+    queryset = TicketCategory.objects.all()
+    serializer_class = TicketCategorySerializer
+    permission_classes = [IsConsultantOrAdmin]
+
+class TicketListCreateView(generics.ListCreateAPIView):
     """
     API para listar y crear tickets.
     Los clientes solo ven sus propios tickets.
     Los consultores ven los tickets que les han sido asignados.
     Los administradores ven todos los tickets.
     """
-    queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [TicketRateThrottle]
+    parser_classes = (MultiPartParser, FormParser)
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'priority', 'category']
+    search_fields = ['subject', 'description']
+    ordering_fields = ['created_at', 'updated_at', 'priority', 'due_date']
+    ordering = ['-created_at']
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):  # Solución para Swagger
+            return Ticket.objects.none()
+
         user = self.request.user
-        if user.user_type == 'admin':
-            return Ticket.objects.all().order_by('-created_at')
-        elif user.user_type == 'consultant':
-            return Ticket.objects.filter(consultant=user).order_by('-created_at')
-        elif user.user_type == 'client':
-            return Ticket.objects.filter(client=user).order_by('-created_at')
-        return Ticket.objects.none()
+        queryset = Ticket.objects.all()
+        
+        if not user.is_authenticated:
+            return Ticket.objects.none()
+            
+        if hasattr(user, 'user_type'):
+            if user.user_type == 'admin':
+                pass  # Admin ve todos los tickets
+            elif user.user_type == 'consultant':
+                queryset = queryset.filter(consultant=user)
+            else:  # cliente
+                queryset = queryset.filter(client=user)
+        else:
+            return Ticket.objects.none()
+            
+        # Filtros adicionales
+        status = self.request.query_params.get('status', None)
+        priority = self.request.query_params.get('priority', None)
+        category = self.request.query_params.get('category', None)
+        
+        if status:
+            queryset = queryset.filter(status=status)
+        if priority:
+            queryset = queryset.filter(priority=priority)
+        if category:
+            queryset = queryset.filter(category=category)
+            
+        return queryset.order_by('-created_at')
 
     def perform_create(self, serializer):
         user = self.request.user
         if user.user_type != 'client':
-            # La restricción de creación se aplica en la vista
-            return Response({"detail": "Solo los clientes pueden crear tickets."}, status=status.HTTP_403_FORBIDDEN)
+            raise permissions.PermissionDenied("Solo los clientes pueden crear tickets.")
 
-        # El cliente del ticket se asigna al usuario autenticado.
+        # Crear el ticket y manejar archivos adjuntos
         ticket = serializer.save(client=user)
-        # Se asume que el primer mensaje se crea en una vista separada, o se puede crear aquí si se envía en el mismo payload.
-        # Por simplicidad, se puede enviar el primer mensaje en el cuerpo de la solicitud y crearlo aquí.
 
 
 class TicketDetailView(generics.RetrieveUpdateAPIView):
@@ -48,6 +92,38 @@ class TicketDetailView(generics.RetrieveUpdateAPIView):
     Permisos basados en el rol del usuario.
     """
     queryset = Ticket.objects.all()
+    serializer_class = TicketSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrConsultant]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def perform_update(self, serializer):
+        ticket = serializer.instance
+        old_status = ticket.status
+        updated_ticket = serializer.save()
+        
+        # Si el ticket se cierra, registrar la fecha
+        if old_status != 'closed' and updated_ticket.status == 'closed':
+            updated_ticket.closed_at = timezone.now()
+            updated_ticket.save()
+
+class TicketAttachmentView(generics.CreateAPIView):
+    """Vista para agregar archivos adjuntos a un ticket."""
+    serializer_class = TicketAttachmentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrConsultant]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def perform_create(self, serializer):
+        ticket_id = self.kwargs.get('ticket_id')
+        ticket = Ticket.objects.get(id=ticket_id)
+        
+        # Verificar permisos
+        if not IsOwnerOrConsultant().has_object_permission(self.request, self, ticket):
+            raise permissions.PermissionDenied
+        
+        serializer.save(
+            ticket=ticket,
+            uploaded_by=self.request.user
+        )
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'pk'

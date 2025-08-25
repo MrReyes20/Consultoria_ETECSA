@@ -68,6 +68,19 @@ class UserResponse(models.Model):
     def __str__(self):
         return f"Respuesta de {self.user.username if self.user else 'Anónimo'} a {self.question.question_text[:30]}..."
 
+class AssessmentResult(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    assessment = models.ForeignKey(SelfAssessment, on_delete=models.CASCADE)
+    score = models.FloatField()  # Puntaje total
+    recommendations = models.TextField()  # Recomendaciones basadas en el resultado
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Resultado de {self.user.username} en {self.assessment.title}"
+
+    class Meta:
+        unique_together = ['user', 'assessment']
+
 # Modelos para el Blog
 class Post(models.Model):
     title = models.CharField(max_length=255)

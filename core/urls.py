@@ -45,6 +45,12 @@ urlpatterns = [
     # Rutas de la aplicación tickets (sistema de comunicación)
     path('api/ticket/', include('ticket.urls')),
 
+    # Rutas del sistema de notificaciones
+    path('api/notifications/', include('apps.notification_system.urls')),
+
+    # Rutas del sistema de reportes
+    path('api/reports/', include('apps.reports.urls')),
+
     # Documentación de la API (Swagger/OpenAPI)
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

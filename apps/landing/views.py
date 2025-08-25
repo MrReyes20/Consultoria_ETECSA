@@ -3,10 +3,14 @@
 from rest_framework import generics, permissions, viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from django.utils.text import slugify
+from apps.users.permissions import IsConsultantOrAdmin, IsOwnerOrConsultant, IsAdminOnly
 
 from . import serializers
-from .models import Section, Service, SuccessCase, ContactMessage, SelfAssessment, AssessmentQuestion, Post, Comment
+from .models import (Section, Service, SuccessCase, ContactMessage, 
+                     SelfAssessment, AssessmentQuestion, UserResponse, 
+                     AssessmentResult, Post, Comment)
 from .serializers import (
     SectionSerializer,
     ServiceSerializer,
@@ -14,6 +18,8 @@ from .serializers import (
     ContactMessageSerializer,
     SelfAssessmentSerializer,
     AssessmentQuestionSerializer,
+    UserResponseSerializer,
+    AssessmentResultSerializer,
     PostSerializer,
     CommentSerializer
 )
@@ -48,6 +54,41 @@ class ContactCreateView(generics.CreateAPIView):
 class SelfAssessmentListView(generics.ListAPIView):
     queryset = SelfAssessment.objects.all()
     serializer_class = SelfAssessmentSerializer
+
+class UserResponseCreateView(generics.CreateAPIView):
+    serializer_class = UserResponseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class AssessmentResultCreateView(generics.CreateAPIView):
+    serializer_class = AssessmentResultSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # Verificar si ya existe un resultado para este usuario y evaluación
+        assessment = serializer.validated_data.get('assessment')
+        existing_result = AssessmentResult.objects.filter(
+            user=self.request.user,
+            assessment=assessment
+        ).first()
+
+        if existing_result:
+            # Actualizar el resultado existente
+            existing_result.score = serializer.validated_data.get('score')
+            existing_result.recommendations = serializer.validated_data.get('recommendations')
+            existing_result.save()
+            return existing_result
+
+        serializer.save(user=self.request.user)
+
+class UserAssessmentResultsView(generics.ListAPIView):
+    serializer_class = AssessmentResultSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return AssessmentResult.objects.filter(user=self.request.user)
     permission_classes = [permissions.AllowAny] # Las autoevaluaciones pueden ser públicas
 
 # ViewSets para la gestión administrativa (requiere autenticación y permisos de administrador)
